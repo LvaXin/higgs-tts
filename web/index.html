@@ -1,0 +1,1766 @@
+<!DOCTYPE html>
+<html lang="zh" data-lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Higgs Audio v3 TTS</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-card: rgba(255,255,255,0.04);
+  --bg-card-hover: rgba(255,255,255,0.07);
+  --bg-elevated: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.08);
+  --border-active: rgba(139,92,246,0.5);
+  --text-primary: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent: #8b5cf6;
+  --accent-light: #a78bfa;
+  --accent-dark: #7c3aed;
+  --accent-glow: rgba(139,92,246,0.15);
+  --accent-glow-strong: rgba(139,92,246,0.25);
+  --success: #10b981;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(ellipse at 30% 20%, rgba(139,92,246,0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 80%, rgba(59,130,246,0.06) 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 50%, rgba(236,72,153,0.04) 0%, transparent 60%);
+  z-index: 0;
+  animation: bgShift 30s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes bgShift {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(-5%, -3%) rotate(3deg); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+.app { position: relative; z-index: 1; }
+
+/* ===== Header ===== */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(10,10,15,0.8);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-inner {
+  max-width: 1400px; margin: 0 auto;
+  padding: 0 24px;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.logo { display: flex; align-items: center; gap: 10px; }
+
+.logo-icon {
+  width: 30px; height: 30px;
+  background: linear-gradient(135deg, var(--accent), #ec4899);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+}
+
+.logo-text { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; }
+
+.logo-badge {
+  font-size: 10px; font-weight: 700;
+  background: var(--accent-glow);
+  color: var(--accent-light);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-left: 2px;
+  letter-spacing: 0.02em;
+}
+
+.header-actions { display: flex; align-items: center; gap: 16px; }
+
+.lang-toggle {
+  display: flex; align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.lang-btn {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font);
+}
+
+.lang-btn.active { background: var(--accent); color: white; box-shadow: 0 2px 8px rgba(139,92,246,0.3); }
+
+.api-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--text-muted);
+  transition: var(--transition);
+}
+.status-dot.online { background: var(--success); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+.status-dot.offline { background: var(--error); }
+.status-dot.checking { animation: pulse 1.5s infinite; }
+
+/* ===== Main ===== */
+.main { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+/* ===== Hero ===== */
+.hero { text-align: center; padding: 40px 24px 32px; animation: fadeInUp 0.5s ease; }
+
+.hero h1 {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  background: linear-gradient(135deg, #fff 0%, var(--accent-light) 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 10px;
+}
+
+.hero p { font-size: 14px; color: var(--text-secondary); max-width: 560px; margin: 0 auto; }
+
+.stats { display: flex; justify-content: center; gap: 40px; margin-top: 28px; flex-wrap: wrap; }
+
+.stat { text-align: center; }
+.stat-value { font-size: 24px; font-weight: 800; color: var(--accent-light); letter-spacing: -0.02em; }
+.stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+/* ===== Content Grid ===== */
+.content-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  margin-top: 24px;
+}
+
+@media (max-width: 960px) {
+  .content-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 28px; }
+  .stats { gap: 24px; }
+}
+
+/* ===== Cards ===== */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: var(--transition);
+}
+
+.card-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-title svg { width: 13px; height: 13px; opacity: 0.5; }
+
+/* ===== Sidebar ===== */
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+/* ===== Control Tokens ===== */
+.token-tabs {
+  display: flex; gap: 3px;
+  margin-bottom: 14px;
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+
+.token-tab-btn {
+  flex: 1;
+  padding: 6px 6px;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font);
+}
+
+.token-tab-btn.active { background: var(--accent); color: white; }
+.token-tab-btn:hover:not(.active) { color: var(--text-secondary); }
+
+.token-tab-content { display: none; }
+.token-tab-content.active { display: block; }
+
+.token-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+  user-select: none;
+  font-family: var(--font);
+}
+
+.chip:hover { border-color: var(--accent); color: var(--accent-light); background: var(--accent-glow); }
+
+/* ===== Parameters ===== */
+.param-item { margin-bottom: 18px; }
+.param-item:last-child { margin-bottom: 0; }
+
+.param-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+
+.param-name { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+
+.param-value {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--accent-light);
+  background: var(--accent-glow);
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.param-desc { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; line-height: 1.5; }
+
+.param-recommended {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--success);
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.2);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.08);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(139,92,246,0.4);
+  transition: var(--transition);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); box-shadow: 0 2px 10px rgba(139,92,246,0.6); }
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(139,92,246,0.4);
+}
+
+.param-select {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font);
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.param-select:focus { border-color: var(--border-active); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+.param-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.param-checkbox-wrap input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+}
+
+.param-checkbox-wrap input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.param-checkbox-wrap input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.param-checkbox-label { font-size: 12px; color: var(--text-secondary); cursor: pointer; }
+
+/* ===== Voice Cloning ===== */
+.ref-audio-drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+}
+
+.ref-audio-drop:hover, .ref-audio-drop.dragover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.ref-audio-drop input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer;
+}
+
+.ref-audio-icon { font-size: 24px; margin-bottom: 6px; }
+.ref-audio-label { font-size: 12px; color: var(--text-secondary); }
+.ref-audio-hint { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+.ref-audio-info {
+  display: none;
+  align-items: center; gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+}
+.ref-audio-info.visible { display: flex; }
+.ref-audio-name { flex: 1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-audio-remove { font-size: 14px; color: var(--text-muted); cursor: pointer; background: none; border: none; transition: var(--transition); }
+.ref-audio-remove:hover { color: var(--error); }
+
+/* Saved Voices */
+.save-voice-bar {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.save-voice-bar.visible { display: flex; }
+
+.save-voice-name-input {
+  flex: 1;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: var(--font);
+  outline: none;
+  transition: var(--transition);
+}
+.save-voice-name-input:focus { border-color: var(--border-active); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+.save-voice-btn {
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: var(--font);
+  white-space: nowrap;
+}
+.save-voice-btn:hover { background: var(--accent-dark); }
+
+.saved-voices-section {
+  margin-top: 12px;
+  display: none;
+}
+.saved-voices-section.visible { display: block; }
+
+.saved-voices-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.saved-voices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.saved-voice-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.saved-voice-item:hover { border-color: var(--accent); background: var(--accent-glow); }
+.saved-voice-item.active { border-color: var(--accent); background: var(--accent-glow-strong); box-shadow: 0 0 0 1px var(--accent); }
+
+.saved-voice-icon { font-size: 14px; flex-shrink: 0; }
+.saved-voice-meta { flex: 1; min-width: 0; }
+.saved-voice-label { font-size: 12px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-voice-date { font-size: 10px; color: var(--text-muted); }
+.saved-voice-del {
+  font-size: 12px; color: var(--text-muted); cursor: pointer;
+  background: none; border: none; transition: var(--transition); padding: 2px 4px; border-radius: 4px;
+}
+.saved-voice-del:hover { color: var(--error); background: rgba(239,68,68,0.1); }
+
+/* ===== Examples ===== */
+.examples-section { margin-top: 12px; }
+.examples-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.example-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.example-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.example-card:last-child { margin-bottom: 0; }
+
+.example-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-light);
+  margin-bottom: 4px;
+}
+
+.example-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  font-family: var(--mono);
+  word-break: break-all;
+}
+
+.example-text .token-highlight {
+  color: var(--accent-light);
+  font-weight: 600;
+}
+
+/* ===== Main Area ===== */
+.main-area { display: flex; flex-direction: column; gap: 16px; }
+
+/* ===== Text Input ===== */
+.selected-tokens-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 28px;
+  padding: 6px 0;
+}
+
+.textarea-wrap { position: relative; }
+
+.text-input {
+  width: 100%;
+  min-height: 130px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  font-size: 14px;
+  font-family: var(--font);
+  color: var(--text-primary);
+  resize: vertical;
+  transition: var(--transition);
+  line-height: 1.7;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.text-input::placeholder { color: var(--text-muted); }
+
+.insert-hint {
+  display: none;
+  position: absolute;
+  top: -24px;
+  left: 14px;
+  font-size: 10px;
+  color: var(--success);
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.2);
+  padding: 2px 8px;
+  border-radius: 4px;
+  animation: fadeInUp 0.2s ease;
+}
+
+.text-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  line-height: 1.5;
+}
+
+/* ===== Generate Button ===== */
+.generate-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.generate-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  color: white;
+  box-shadow: 0 4px 16px rgba(139,92,246,0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.generate-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, transparent, rgba(255,255,255,0.1));
+  opacity: 0;
+  transition: var(--transition);
+}
+.generate-btn:hover::before { opacity: 1; }
+.generate-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(139,92,246,0.4); }
+.generate-btn:active { transform: translateY(0); }
+.generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.generate-btn .spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: none;
+}
+.generate-btn.loading .spinner { display: block; }
+.generate-btn.loading .btn-text { display: none; }
+.generate-btn.loading .btn-text-ing { display: inline; }
+.generate-btn .btn-text-ing { display: none; }
+
+.progress-bar {
+  height: 3px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 2px;
+  overflow: hidden;
+  display: none;
+  margin-top: 10px;
+}
+.progress-bar.visible { display: block; }
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #ec4899);
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* ===== Audio Output ===== */
+.audio-output { display: none; }
+.audio-output.visible { display: block; }
+
+.audio-player-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.audio-play-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.audio-play-btn:hover { background: var(--accent-dark); }
+
+.audio-waveform {
+  flex: 1;
+  height: 36px;
+  background: rgba(255,255,255,0.03);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.audio-waveform canvas { width: 100%; height: 100%; }
+
+.audio-time { font-size: 11px; font-family: var(--mono); color: var(--text-muted); flex-shrink: 0; }
+
+.audio-download-btn {
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  text-decoration: none;
+  flex-shrink: 0;
+  font-family: var(--font);
+}
+.audio-download-btn:hover { border-color: var(--accent); color: var(--accent-light); }
+
+/* ===== Languages ===== */
+.langs-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+
+.langs-section h2 {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+}
+
+.langs-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.lang-tag {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: var(--transition);
+}
+.lang-tag:hover { border-color: var(--accent); color: var(--accent-light); }
+
+/* ===== Footer ===== */
+.footer {
+  margin-top: 40px;
+  padding: 20px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+.footer a { color: var(--accent-light); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 1000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  font-family: var(--font);
+}
+.toast.visible { transform: translateY(0); opacity: 1; }
+.toast.success { background: var(--success); color: white; }
+.toast.error { background: var(--error); color: white; }
+.toast.info { background: var(--accent); color: white; }
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+  .header-inner { padding: 0 16px; }
+  .main { padding: 16px; }
+  .hero { padding: 28px 16px 20px; }
+  .hero h1 { font-size: 24px; }
+  .stats { gap: 16px; }
+  .stat-value { font-size: 20px; }
+  .generate-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">🎙</div>
+        <span class="logo-text">Higgs Audio v3</span>
+        <span class="logo-badge" data-i18n="badge">TTS 4B</span>
+      </div>
+      <div class="header-actions">
+        <div class="api-status">
+          <span class="status-dot checking" id="statusDot"></span>
+          <span id="statusText" data-i18n="status_checking">检测中</span>
+        </div>
+        <div class="lang-toggle">
+          <button class="lang-btn active" data-lang="zh" onclick="setLang('zh')">中文</button>
+          <button class="lang-btn" data-lang="en" onclick="setLang('en')">EN</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Hero -->
+    <section class="hero">
+      <h1 data-i18n="hero_title">让文字拥有生命力</h1>
+      <p data-i18n="hero_desc">Higgs Audio v3 TTS — 4B 参数多语言语音合成，支持 100+ 语言、音色克隆、情感与语音控制</p>
+      <div class="stats">
+        <div class="stat"><div class="stat-value">4B</div><div class="stat-label" data-i18n="stat_params">参数</div></div>
+        <div class="stat"><div class="stat-value">100+</div><div class="stat-label" data-i18n="stat_langs">语言</div></div>
+        <div class="stat"><div class="stat-value">8</div><div class="stat-label" data-i18n="stat_codebooks">Codebooks</div></div>
+        <div class="stat"><div class="stat-value">24kHz</div><div class="stat-label" data-i18n="stat_samplerate">采样率</div></div>
+        <div class="stat"><div class="stat-value">25fps</div><div class="stat-label" data-i18n="stat_framerate">帧率</div></div>
+      </div>
+    </section>
+
+    <!-- Content Grid -->
+    <div class="content-grid">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <!-- Control Tokens -->
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span data-i18n="ct_title">控制标记</span>
+          </div>
+
+          <div class="token-tabs">
+            <button class="token-tab-btn active" data-tab="emotion" onclick="switchTab('emotion')" data-i18n="tab_emotion">情感</button>
+            <button class="token-tab-btn" data-tab="style" onclick="switchTab('style')" data-i18n="tab_style">风格</button>
+            <button class="token-tab-btn" data-tab="sfx" onclick="switchTab('sfx')" data-i18n="tab_sfx">音效</button>
+            <button class="token-tab-btn" data-tab="prosody" onclick="switchTab('prosody')" data-i18n="tab_prosody">韵律</button>
+          </div>
+
+          <div class="token-tab-content active" id="tab-emotion">
+            <div class="token-chips" id="chips-emotion"></div>
+          </div>
+          <div class="token-tab-content" id="tab-style">
+            <div class="token-chips" id="chips-style"></div>
+          </div>
+          <div class="token-tab-content" id="tab-sfx">
+            <div class="token-chips" id="chips-sfx"></div>
+          </div>
+          <div class="token-tab-content" id="tab-prosody">
+            <div class="token-chips" id="chips-prosody"></div>
+          </div>
+        </div>
+
+        <!-- Parameters -->
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            <span data-i18n="param_title">参数设置</span>
+          </div>
+
+          <div class="param-item">
+            <div class="param-recommended" data-i18n="rec_badge">✦ 官方推荐</div>
+            <div class="param-header">
+              <span class="param-name">Temperature</span>
+              <span class="param-value" id="val-temperature">0.8</span>
+            </div>
+            <div class="param-desc" data-i18n="desc_temperature">采样温度，控制输出的随机性。值越高输出越多样，值越低越保守。官方推荐 0.8，默认 1.0。</div>
+            <input type="range" min="0.1" max="2.0" step="0.1" value="0.8" id="slider-temperature" oninput="updateSlider(this)">
+          </div>
+
+          <div class="param-item">
+            <div class="param-recommended" data-i18n="rec_badge">✦ 官方推荐</div>
+            <div class="param-header">
+              <span class="param-name">Top-k</span>
+              <span class="param-value" id="val-top_k">50</span>
+            </div>
+            <div class="param-desc" data-i18n="desc_top_k">每次采样只从前 k 个最可能的 token 中选择。值越小输出越确定。官方推荐 50，不设置则无限制。</div>
+            <input type="range" min="1" max="200" step="1" value="50" id="slider-top_k" oninput="updateSlider(this)">
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">Max Tokens</span>
+              <span class="param-value" id="val-max_new_tokens">2048</span>
+            </div>
+            <div class="param-desc" data-i18n="desc_max_tokens">最大生成 token 数。控制输出长度上限，超长文本需要调大。官方示例用 1024，API 默认 2048。</div>
+            <input type="range" min="128" max="4096" step="128" value="2048" id="slider-max_new_tokens" oninput="updateSlider(this)">
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">Repetition Penalty</span>
+              <span class="param-value" id="val-repetition_penalty">1.0</span>
+            </div>
+            <div class="param-desc" data-i18n="desc_repetition">重复惩罚，值大于 1 抑制重复生成。默认 1.0（不惩罚）。</div>
+            <input type="range" min="1.0" max="2.0" step="0.05" value="1.0" id="slider-repetition_penalty" oninput="updateSlider(this)">
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name" data-i18n="label_format">输出格式</span>
+            </div>
+            <div class="param-desc" data-i18n="desc_format">语音文件输出格式。</div>
+            <select class="param-select" id="param-response_format">
+              <option value="wav" selected data-i18n="fmt_wav">WAV (无损)</option>
+              <option value="mp3" data-i18n="fmt_mp3">MP3</option>
+              <option value="flac" data-i18n="fmt_flac">FLAC (无损)</option>
+              <option value="opus" data-i18n="fmt_opus">Opus</option>
+              <option value="aac" data-i18n="fmt_aac">AAC</option>
+              <option value="pcm" data-i18n="fmt_pcm">PCM (原始)</option>
+            </select>
+          </div>
+
+          <div class="param-item">
+            <div class="param-header">
+              <span class="param-name">Speed</span>
+              <span class="param-value" id="val-speed">1.0</span>
+            </div>
+            <div class="param-desc" data-i18n="desc_speed">播放速度倍率，1.0 为原始速度。</div>
+            <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" id="slider-speed" oninput="updateSlider(this)">
+          </div>
+
+          <div class="param-checkbox-wrap">
+            <input type="checkbox" id="param-stream">
+            <label class="param-checkbox-label" for="param-stream" data-i18n="label_stream">启用流式输出 (SSE)</label>
+          </div>
+        </div>
+
+        <!-- Voice Cloning -->
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <span data-i18n="vc_title">音色克隆</span>
+          </div>
+
+          <div class="ref-audio-drop" id="dropZone">
+            <input type="file" accept="audio/*" id="refFileInput" onchange="handleRefFile(this)">
+            <div class="ref-audio-icon">🎵</div>
+            <div class="ref-audio-label" data-i18n="vc_drop_label">拖放或点击上传参考音频</div>
+            <div class="ref-audio-hint" data-i18n="vc_drop_hint">WAV / MP3 / FLAC，建议 5-30 秒清晰人声</div>
+          </div>
+          <div class="ref-audio-info" id="refFileInfo">
+            <span class="ref-audio-name" id="refFileName"></span>
+            <button class="ref-audio-remove" onclick="removeRefFile()">✕</button>
+          </div>
+
+          <div class="save-voice-bar" id="saveVoiceBar">
+            <input type="text" class="save-voice-name-input" id="saveVoiceName" data-i18n-placeholder="vc_name_ph" placeholder="给音色命名（选填）">
+            <button class="save-voice-btn" onclick="saveVoice()" data-i18n="vc_save_btn">💾 保存</button>
+          </div>
+
+          <div style="margin-top: 10px">
+            <textarea
+              id="refTranscript"
+              class="text-input"
+              style="min-height: 50px; font-size: 12px;"
+              data-i18n-placeholder="ref_transcript_ph"
+              placeholder="参考音频的台词（选填）"
+            ></textarea>
+          </div>
+
+          <div class="saved-voices-section" id="savedVoicesSection">
+            <div class="saved-voices-label" data-i18n="vc_saved_label">已保存的音色</div>
+            <div class="saved-voices-list" id="savedVoicesList"></div>
+          </div>
+
+          <div style="margin-top: 8px" class="text-hint">
+            <span>ℹ️</span>
+            <span data-i18n="vc_note">Higgs TTS 无预设音色库。零样本模式使用默认音色，音色克隆通过参考音频实现。</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Area -->
+      <div class="main-area">
+        <!-- Input -->
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <span data-i18n="input_title">输入文本</span>
+          </div>
+
+          <div class="selected-tokens-bar" id="selectedTokens"></div>
+
+          <div class="textarea-wrap">
+            <span class="insert-hint" id="insertHint" data-i18n="insert_hint">✓ 已插入光标位置</span>
+            <textarea
+              class="text-input"
+              id="textInput"
+              data-i18n-placeholder="input_ph"
+              placeholder="输入要合成的文本…&#10;支持任意语言，也可手动写入控制标记如 &lt;|emotion:amusement|&gt;"
+              onclick="rememberCursor()"
+              oninput="rememberCursor()"
+            ></textarea>
+          </div>
+
+          <div class="text-hint">
+            <span>💡</span>
+            <span data-i18n="input_hint">左侧点击控制标记 → 插入到光标位置。情感/风格/韵律标记放在句首，音效/停顿标记放在句中需要的位置。</span>
+          </div>
+
+          <div class="generate-row">
+            <button class="generate-btn" id="generateBtn" onclick="generate()">
+              <span class="btn-text" data-i18n="btn_generate">⚡ 生成语音</span>
+              <span class="btn-text-ing" data-i18n="btn_generate_ing">生成中…</span>
+              <span class="spinner"></span>
+            </button>
+          </div>
+
+          <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <!-- Examples -->
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span data-i18n="examples_title">参考案例</span>
+          </div>
+          <div id="examplesContainer"></div>
+        </div>
+
+        <!-- Audio Output -->
+        <div class="audio-output" id="audioOutput">
+          <div class="card">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+              <span data-i18n="output_title">合成结果</span>
+            </div>
+
+            <div class="audio-player-wrap">
+              <button class="audio-play-btn" id="playBtn" onclick="togglePlay()">
+                <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <svg id="pauseIcon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              </button>
+              <div class="audio-waveform"><canvas id="waveformCanvas"></canvas></div>
+              <span class="audio-time" id="audioTime">0:00</span>
+              <a class="audio-download-btn" id="downloadBtn" data-i18n="btn_download" download="higgs-tts-output.wav">下载</a>
+            </div>
+            <audio id="audioPlayer" style="display:none"></audio>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Languages Section -->
+    <section class="langs-section">
+      <h2 data-i18n="langs_title">支持的语言</h2>
+      <div class="langs-grid" id="langsGrid"></div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span data-i18n="footer_text">基于</span>
+    <a href="https://hf-mirror.com/bosonai/higgs-audio-v3-tts-4b" target="_blank">bosonai/higgs-audio-v3-tts-4b</a>
+    <span> · </span>
+    <span data-i18n="footer_runtime">推理运行时</span>
+    <a href="https://github.com/sgl-project/sglang-omni" target="_blank">SGLang-Omni</a>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ i18n ============
+const i18n = {
+  zh: {
+    badge: 'TTS 4B',
+    status_checking: '检测中',
+    status_online: '服务在线',
+    status_offline: '服务未连接',
+    hero_title: '让文字拥有生命力',
+    hero_desc: 'Higgs Audio v3 TTS — 4B 参数多语言语音合成，支持 100+ 语言、音色克隆、情感与语音控制',
+    stat_params: '参数', stat_langs: '语言', stat_samplerate: '采样率', stat_framerate: '帧率', stat_codebooks: '码本',
+    ct_title: '控制标记',
+    tab_emotion: '情感', tab_style: '风格', tab_sfx: '音效', tab_prosody: '韵律',
+    param_title: '参数设置',
+    rec_badge: '✦ 官方推荐',
+    desc_temperature: '采样温度，控制输出的随机性。值越高输出越多样，值越低越保守。官方推荐 0.8，API 默认 1.0。',
+    desc_top_k: '每次采样只从前 k 个最可能的 token 中选择。值越小输出越确定。官方推荐 50，不设置则无限制。',
+    desc_max_tokens: '最大生成 token 数。控制输出长度上限，超长文本需要调大。官方示例用 1024，API 默认 2048。',
+    desc_repetition: '重复惩罚，值大于 1 抑制重复生成。默认 1.0（不惩罚）。',
+    label_format: '输出格式',
+    desc_format: '语音文件输出格式，WAV 为无损 PCM。',
+    desc_speed: '播放速度倍率，1.0 为原始速度。',
+    label_stream: '启用流式输出 (SSE)',
+    fmt_wav: 'WAV (无损)', fmt_mp3: 'MP3', fmt_flac: 'FLAC (无损)', fmt_opus: 'Opus', fmt_aac: 'AAC', fmt_pcm: 'PCM (原始)',
+    btn_delete: '删除',
+    vc_default_prefix: '音色',
+    vc_title: '音色克隆',
+    vc_drop_label: '拖放或点击上传参考音频',
+    vc_drop_hint: 'WAV / MP3 / FLAC，建议 5-30 秒清晰人声',
+    ref_transcript_ph: '参考音频的台词（选填，提供可提升克隆质量）',
+    vc_note: 'Higgs TTS 无预设音色库。零样本模式使用默认音色，音色克隆通过参考音频实现。',
+    vc_name_ph: '给音色命名（选填）',
+    vc_save_btn: '💾 保存',
+    vc_saved_label: '已保存的音色',
+    toast_saved: '音色已保存！',
+    toast_use_name: '请输入音色名称',
+    toast_deleted: '音色已删除',
+    vc_default_name: '未命名',
+    input_title: '输入文本',
+    input_ph: '输入要合成的文本…\n支持任意语言，也可手动写入控制标记如 <|emotion:amusement|>',
+    input_hint: '左侧点击控制标记 → 插入到光标位置。情感/风格/韵律标记放在句首，音效/停顿标记放在句中需要的位置。',
+    insert_hint: '✓ 已插入光标位置',
+    btn_generate: '⚡ 生成语音',
+    btn_generate_ing: '生成中…',
+    btn_download: '下载',
+    output_title: '合成结果',
+    examples_title: '参考案例',
+    langs_title: '支持的语言',
+    footer_text: '基于',
+    footer_runtime: '推理运行时',
+    toast_success: '语音合成完成！',
+    toast_error_gen: '生成失败，请检查服务是否运行',
+    toast_no_input: '请输入要合成的文本',
+    toast_offline: '服务未连接',
+    toast_example_loaded: '案例已加载',
+    emotions: { elation:'欣喜', amusement:'愉悦', enthusiasm:'热情', determination:'坚定', pride:'自豪', contentment:'满足', affection:'温柔', relief:'释然', contemplation:'沉思', confusion:'困惑', surprise:'惊讶', awe:'敬畏', longing:'渴望', arousal:'激动', anger:'愤怒', fear:'恐惧', disgust:'厌恶', bitterness:'苦闷', sadness:'悲伤', shame:'羞愧', helplessness:'无助' },
+    styles: { singing:'唱歌', shouting:'喊叫', whispering:'耳语' },
+    sfx: { cough:'咳嗽', laughter:'笑声', crying:'哭声', screaming:'尖叫', burping:'打嗝', humming:'哼唱', sigh:'叹息', sniff:'抽鼻', sneeze:'打喷嚏' },
+    prosody: { speed_very_slow:'极慢', speed_slow:'慢速', speed_fast:'快速', speed_very_fast:'极快', pitch_low:'低音', pitch_high:'高音', pause:'停顿', long_pause:'长停顿', expressive_high:'高表现力', expressive_low:'低表现力' },
+    examples: [
+      { label: '欢乐对话', text: '<|emotion:amusement|><|prosody:expressive_high|>Wait, wait, that was kind of hilarious. <|sfx:laughter|>Hehe, no, seriously, I was not ready for that.' },
+      { label: '课堂教学', text: '<|emotion:enthusiasm|>Sure, no problem! We learned how plants make food through photosynthesis, and <|prosody:long_pause|>there will be a quiz this Friday.' },
+      { label: '悲伤哭泣', text: '<|emotion:sadness|><|sfx:crying|>I... I\'m sorry. <|sfx:sniff|>Sff, We really tried.' },
+      { label: '困惑思考', text: '<|emotion:confusion|><|sfx:humming|>Hmm... wait. <|sfx:sigh|>Uh, I\'m not sure I understand.' },
+      { label: '中文朗诵', text: '<|emotion:contemplation|><|prosody:speed_slow|>床前明月光，疑是地上霜。举头望明月，<|prosody:pause|>低头思故乡。' },
+      { label: '激情演讲', text: '<|emotion:determination|><|style:shouting|>We will not give up! We will not back down! <|prosody:long_pause|>Because this fight is far from over!' }
+    ]
+  },
+  en: {
+    badge: 'TTS 4B',
+    status_checking: 'Checking',
+    status_online: 'Online',
+    status_offline: 'Offline',
+    hero_title: 'Give Your Words a Voice',
+    hero_desc: 'Higgs Audio v3 TTS — 4B parameter multilingual speech synthesis with 100+ languages, voice cloning, and emotion control',
+    stat_params: 'Parameters', stat_langs: 'Languages', stat_samplerate: 'Sample Rate', stat_framerate: 'Frame Rate', stat_codebooks: 'Codebooks',
+    ct_title: 'Control Tokens',
+    tab_emotion: 'Emotion', tab_style: 'Style', tab_sfx: 'Sound FX', tab_prosody: 'Prosody',
+    param_title: 'Parameters',
+    rec_badge: '✦ Recommended',
+    desc_temperature: 'Sampling temperature. Higher = more diverse, lower = more conservative. Recommended: 0.8, Default: 1.0.',
+    desc_top_k: 'Sample only from top-k most likely tokens. Lower = more deterministic. Recommended: 50, unset = no limit.',
+    desc_max_tokens: 'Max generated tokens. Longer text needs higher values. Cookbook uses 1024, API default 2048.',
+    desc_repetition: 'Repetition penalty. > 1 suppresses repetition. Default 1.0 (no penalty).',
+    label_format: 'Output Format',
+    desc_format: 'Audio output format. WAV is lossless PCM.',
+    desc_speed: 'Playback speed multiplier. 1.0 is normal speed.',
+    label_stream: 'Enable streaming output (SSE)',
+    fmt_wav: 'WAV (Lossless)', fmt_mp3: 'MP3', fmt_flac: 'FLAC (Lossless)', fmt_opus: 'Opus', fmt_aac: 'AAC', fmt_pcm: 'PCM (Raw)',
+    btn_delete: 'Delete',
+    vc_default_prefix: 'Voice',
+    vc_title: 'Voice Cloning',
+    vc_drop_label: 'Drop or click to upload reference audio',
+    vc_drop_hint: 'WAV / MP3 / FLAC, 5-30s clear voice recommended',
+    ref_transcript_ph: 'Reference transcript (optional, improves cloning quality)',
+    vc_note: 'Higgs TTS has no predefined voice library. Zero-shot uses default voice. Voice cloning via reference audio.',
+    vc_name_ph: 'Name this voice (optional)',
+    vc_save_btn: '💾 Save',
+    vc_saved_label: 'Saved Voices',
+    toast_saved: 'Voice saved!',
+    toast_use_name: 'Please enter a voice name.',
+    toast_deleted: 'Voice deleted.',
+    vc_default_name: 'Unnamed',
+    input_title: 'Input Text',
+    input_ph: 'Enter text to synthesize…\nAny language, or inline control tokens like <|emotion:amusement|>',
+    input_hint: 'Click a control token on the left → inserts at cursor position. Emotion/Style/Prosody at start, SFX/Pause inline.',
+    insert_hint: '✓ Inserted at cursor',
+    btn_generate: '⚡ Generate Speech',
+    btn_generate_ing: 'Generating…',
+    btn_download: 'Download',
+    output_title: 'Output',
+    examples_title: 'Examples',
+    langs_title: 'Supported Languages',
+    footer_text: 'Based on',
+    footer_runtime: 'Inference runtime:',
+    toast_success: 'Speech generated successfully!',
+    toast_error_gen: 'Generation failed. Check if the service is running.',
+    toast_no_input: 'Please enter text to synthesize.',
+    toast_offline: 'Service not connected.',
+    toast_example_loaded: 'Example loaded',
+    emotions: { elation:'Elation', amusement:'Amusement', enthusiasm:'Enthusiasm', determination:'Determination', pride:'Pride', contentment:'Contentment', affection:'Affection', relief:'Relief', contemplation:'Contemplation', confusion:'Confusion', surprise:'Surprise', awe:'Awe', longing:'Longing', arousal:'Arousal', anger:'Anger', fear:'Fear', disgust:'Disgust', bitterness:'Bitterness', sadness:'Sadness', shame:'Shame', helplessness:'Helplessness' },
+    styles: { singing:'Singing', shouting:'Shouting', whispering:'Whispering' },
+    sfx: { cough:'Cough', laughter:'Laughter', crying:'Crying', screaming:'Screaming', burping:'Burping', humming:'Humming', sigh:'Sigh', sniff:'Sniff', sneeze:'Sneeze' },
+    prosody: { speed_very_slow:'Very Slow', speed_slow:'Slow', speed_fast:'Fast', speed_very_fast:'Very Fast', pitch_low:'Low Pitch', pitch_high:'High Pitch', pause:'Pause', long_pause:'Long Pause', expressive_high:'High Expressive', expressive_low:'Low Expressive' },
+    examples: [
+      { label: 'Joyful Conversation', text: '<|emotion:amusement|><|prosody:expressive_high|>Wait, wait, that was kind of hilarious. <|sfx:laughter|>Hehe, no, seriously, I was not ready for that.' },
+      { label: 'Classroom Teaching', text: '<|emotion:enthusiasm|>Sure, no problem! We learned how plants make food through photosynthesis, and <|prosody:long_pause|>there will be a quiz this Friday.' },
+      { label: 'Sad & Crying', text: '<|emotion:sadness|><|sfx:crying|>I... I\'m sorry. <|sfx:sniff|>Sff, We really tried.' },
+      { label: 'Confused Thinking', text: '<|emotion:confusion|><|sfx:humming|>Hmm... wait. <|sfx:sigh|>Uh, I\'m not sure I understand.' },
+      { label: 'Chinese Poetry', text: '<|emotion:contemplation|><|prosody:speed_slow|>床前明月光，疑是地上霜。举头望明月，<|prosody:pause|>低头思故乡。' },
+      { label: 'Passionate Speech', text: '<|emotion:determination|><|style:shouting|>We will not give up! We will not back down! <|prosody:long_pause|>Because this fight is far from over!' }
+    ]
+  }
+};
+
+const controlTokens = {
+  emotion: ['elation','amusement','enthusiasm','determination','pride','contentment','affection','relief','contemplation','confusion','surprise','awe','longing','arousal','anger','fear','disgust','bitterness','sadness','shame','helplessness'],
+  style: ['singing','shouting','whispering'],
+  sfx: ['cough','laughter','crying','screaming','burping','humming','sigh','sniff','sneeze'],
+  prosody: ['speed_very_slow','speed_slow','speed_fast','speed_very_fast','pitch_low','pitch_high','pause','long_pause','expressive_high','expressive_low']
+};
+
+const languages = [
+  'English','中文','日本語','한국어','Français','Deutsch','Español','Português',
+  'Italiano','Русский','العربية','हिन्दी','ภาษาไทย','Tiếng Việt','Türkçe','Polski',
+  'Nederlands','Svenska','Dansk','Norsk','Finnish','Čeština','Magyar','Română',
+  'Ελληνικά','Українська','Bahasa Indonesia','Bahasa Melayu','Filipino','සිංහල',
+  'ქართული','Հայերեն','فارسی','اردو','বাংলা','தமிழ்','తెలుగు','ಕನ್ನಡ',
+  'മലയാളം','Shona','Zulu','Xhosa','Suahili','Igbo','Yorùbá','Amharic',
+  'Hausa','Euskara','Català','Galego','Slovenščina','Slovenčina','Bosanski',
+  'Hrvatski','Srpski','Bulgarski','Lietuvių','Latviešu','Eesti','Íslenska',
+  'Gaeilge','Cymraeg','Brezhoneg','Maltese','Kurdî','Azərbaycan',
+  'Қазақ','Ўзбек','עברית','አማርኛ','ਪੰਜਾਬੀ','मराठी','नेपाली','မြန်မာ'
+];
+
+// ============ State ============
+let currentLang = 'zh';
+let cursorPos = { start: 0, end: 0 };
+let refFile = null;
+let refFileBase64 = null;
+let selectedSavedId = null;
+let audioBlob = null;
+let audioUrl = null;
+let isPlaying = false;
+let apiOnline = false;
+const API_BASE = 'http://localhost:12589';
+
+// ============ IndexedDB ============
+const DB_NAME = 'HiggsTTS_Voices';
+const DB_VERSION = 1;
+const STORE_NAME = 'voices';
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains(STORE_NAME)) {
+        d.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+function dbPut(voice) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(voice);
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+
+function dbDelete(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+
+function dbGetAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+
+// ============ Init ============
+async function init() {
+  buildControlChips();
+  buildLangsGrid();
+  buildExamples();
+  checkApiStatus();
+  setInterval(checkApiStatus, 10000);
+  setupDragDrop();
+  await openDB();
+  loadSavedVoicesList();
+}
+
+// ============ i18n ============
+function setLang(lang) {
+  currentLang = lang;
+  document.documentElement.setAttribute('data-lang', lang);
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-lang') === lang));
+  applyI18n();
+  buildControlChips();
+  buildExamples();
+}
+
+function applyI18n() {
+  const t = i18n[currentLang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key] !== undefined) el.textContent = t[key];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (t[key] !== undefined) el.placeholder = t[key];
+  });
+}
+
+function t(key) { return i18n[currentLang][key] || key; }
+
+// ============ Cursor tracking ============
+function rememberCursor() {
+  const ta = document.getElementById('textInput');
+  cursorPos.start = ta.selectionStart;
+  cursorPos.end = ta.selectionEnd;
+}
+
+// ============ Control Chips ============
+function buildControlChips() {
+  const t = i18n[currentLang];
+  ['emotion','style','sfx','prosody'].forEach(cat => {
+    const container = document.getElementById(`chips-${cat}`);
+    container.innerHTML = '';
+    controlTokens[cat].forEach(token => {
+      const labelKey = cat === 'sfx' ? 'sfx' : cat + 's';
+      const label = t[labelKey]?.[token] || token;
+      const chip = document.createElement('button');
+      chip.className = 'chip';
+      chip.textContent = label;
+      chip.title = `<|${cat}:${token}|>`;
+      chip.onclick = () => insertTokenAtCursor(cat, token);
+      container.appendChild(chip);
+    });
+  });
+}
+
+function insertTokenAtCursor(category, token) {
+  const ta = document.getElementById('textInput');
+  const tokenStr = `<|${category}:${token}|>`;
+  const pos = cursorPos.start;
+
+  const before = ta.value.substring(0, pos);
+  const after = ta.value.substring(pos);
+  ta.value = before + tokenStr + after;
+
+  const newPos = pos + tokenStr.length;
+  ta.focus();
+  ta.setSelectionRange(newPos, newPos);
+  cursorPos.start = newPos;
+  cursorPos.end = newPos;
+
+  showInsertHint();
+}
+
+function showInsertHint() {
+  const hint = document.getElementById('insertHint');
+  hint.style.display = 'block';
+  setTimeout(() => hint.style.display = 'none', 1200);
+}
+
+// ============ Tabs ============
+function switchTab(tabName) {
+  document.querySelectorAll('.token-tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tabName));
+  document.querySelectorAll('.token-tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tabName}`));
+}
+
+// ============ Sliders ============
+function updateSlider(el) {
+  document.getElementById(`val-${el.id.replace('slider-', '')}`).textContent = el.value;
+}
+
+// ============ Examples ============
+function buildExamples() {
+  const container = document.getElementById('examplesContainer');
+  container.innerHTML = '';
+  const examples = i18n[currentLang].examples || [];
+  examples.forEach(ex => {
+    const card = document.createElement('div');
+    card.className = 'example-card';
+    card.onclick = () => loadExample(ex.text);
+
+    const highlightedText = ex.text.replace(/(<\|[^|]+\|>)/g, '<span class="token-highlight">$1</span>');
+
+    card.innerHTML = `
+      <div class="example-label">${ex.label}</div>
+      <div class="example-text">${highlightedText}</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function loadExample(text) {
+  const ta = document.getElementById('textInput');
+  ta.value = text;
+  cursorPos.start = text.length;
+  cursorPos.end = text.length;
+  showToast(t('toast_example_loaded'), 'info');
+}
+
+// ============ Languages Grid ============
+function buildLangsGrid() {
+  const grid = document.getElementById('langsGrid');
+  grid.innerHTML = '';
+  languages.forEach(lang => {
+    const tag = document.createElement('span');
+    tag.className = 'lang-tag';
+    tag.textContent = lang;
+    grid.appendChild(tag);
+  });
+}
+
+// ============ Drag & Drop ============
+function setupDragDrop() {
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) { refFile = e.dataTransfer.files[0]; showRefFileInfo(); }
+  });
+}
+
+function handleRefFile(input) {
+  if (input.files.length) { refFile = input.files[0]; showRefFileInfo(); }
+}
+
+function showRefFileInfo() {
+  document.getElementById('refFileName').textContent = refFile.name;
+  document.getElementById('refFileInfo').classList.add('visible');
+  document.getElementById('saveVoiceBar').classList.add('visible');
+  // Convert to base64 for save/generate
+  fileToBase64(refFile).then(b => { refFileBase64 = b; }).catch(() => {});
+}
+
+function removeRefFile() {
+  refFile = null;
+  refFileBase64 = null;
+  selectedSavedId = null;
+  document.getElementById('refFileInput').value = '';
+  document.getElementById('refFileInfo').classList.remove('visible');
+  document.getElementById('saveVoiceBar').classList.remove('visible');
+  document.getElementById('saveVoiceName').value = '';
+}
+
+// ============ Saved Voices ============
+async function saveVoice() {
+  if (!refFileBase64) { showToast(t('toast_use_name'), 'error'); return; }
+  const nameInput = document.getElementById('saveVoiceName');
+  const name = nameInput.value.trim() || `${t('vc_default_prefix')} ${Date.now().toString(36).toUpperCase()}`;
+  const voice = {
+    id: 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    name: name,
+    base64: refFileBase64,
+    mediaType: refFile.type || 'audio/wav',
+    transcript: document.getElementById('refTranscript').value.trim() || '',
+    addedAt: new Date().toISOString()
+  };
+  await dbPut(voice);
+  nameInput.value = '';
+  loadSavedVoicesList();
+  showToast(t('toast_saved'), 'success');
+}
+
+async function loadSavedVoicesList() {
+  const voices = await dbGetAll();
+  const section = document.getElementById('savedVoicesSection');
+  const list = document.getElementById('savedVoicesList');
+
+  if (!voices.length) {
+    section.classList.remove('visible');
+    return;
+  }
+
+  section.classList.add('visible');
+  list.innerHTML = '';
+
+  // Sort by newest first
+  voices.sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
+
+  voices.forEach(v => {
+    const item = document.createElement('div');
+    item.className = 'saved-voice-item' + (selectedSavedId === v.id ? ' active' : '');
+    const date = new Date(v.addedAt);
+    const dateStr = date.toLocaleDateString(currentLang === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' });
+
+    item.innerHTML = `
+      <span class="saved-voice-icon">🎤</span>
+      <div class="saved-voice-meta">
+        <div class="saved-voice-label">${escHtml(v.name)}</div>
+        <div class="saved-voice-date">${dateStr}${v.transcript ? ' · ' + escHtml(v.transcript.slice(0, 20)) : ''}</div>
+      </div>
+      <button class="saved-voice-del" title="${t('btn_delete')}">🗑</button>
+    `;
+
+    // Click → select
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('.saved-voice-del')) return;
+      selectSavedVoice(v);
+    });
+
+    // Delete button
+    item.querySelector('.saved-voice-del').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await dbDelete(v.id);
+      if (selectedSavedId === v.id) removeRefFile();
+      loadSavedVoicesList();
+      showToast(t('toast_deleted'), 'info');
+    });
+
+    list.appendChild(item);
+  });
+}
+
+function selectSavedVoice(voice) {
+  selectedSavedId = voice.id;
+  refFileBase64 = voice.base64;
+  // Create a File-like object for display
+  refFile = new File([b64toBlob(voice.base64, voice.mediaType)], voice.name, { type: voice.mediaType });
+  document.getElementById('refFileName').textContent = voice.name;
+  document.getElementById('refFileInfo').classList.add('visible');
+  document.getElementById('refTranscript').value = voice.transcript || '';
+  // Update active state in list
+  document.querySelectorAll('.saved-voice-item').forEach(el => el.classList.remove('active'));
+  loadSavedVoicesList();
+}
+
+function b64toBlob(base64, mimeType) {
+  const bytes = atob(base64);
+  const buf = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) buf[i] = bytes.charCodeAt(i);
+  return new Blob([buf], { type: mimeType || 'audio/wav' });
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ============ API Status ============
+async function checkApiStatus() {
+  try {
+    const res = await fetch(`${API_BASE}/health`, { method: 'GET' });
+    const data = await res.json();
+    apiOnline = data.status === 'healthy';
+  } catch { apiOnline = false; }
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+  dot.className = 'status-dot ' + (apiOnline ? 'online' : 'offline');
+  text.textContent = apiOnline ? t('status_online') : t('status_offline');
+}
+
+// ============ Generate ============
+async function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parts = reader.result.split(',');
+      resolve(parts[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function generate() {
+  const textInput = document.getElementById('textInput');
+  let inputText = textInput.value.trim();
+
+  if (!inputText) { showToast(t('toast_no_input'), 'error'); return; }
+
+  const btn = document.getElementById('generateBtn');
+  const progressBar = document.getElementById('progressBar');
+  const progressFill = document.getElementById('progressFill');
+
+  btn.classList.add('loading');
+  btn.disabled = true;
+  progressBar.classList.add('visible');
+  progressFill.style.width = '0%';
+
+  let progress = 0;
+  const progressInterval = setInterval(() => {
+    progress += Math.random() * 15;
+    if (progress > 90) progress = 90;
+    progressFill.style.width = progress + '%';
+  }, 500);
+
+  try {
+    const body = {
+      input: inputText,
+      temperature: parseFloat(document.getElementById('slider-temperature').value),
+      top_k: parseInt(document.getElementById('slider-top_k').value),
+      max_new_tokens: parseInt(document.getElementById('slider-max_new_tokens').value),
+      repetition_penalty: parseFloat(document.getElementById('slider-repetition_penalty').value),
+      response_format: document.getElementById('param-response_format').value,
+      speed: parseFloat(document.getElementById('slider-speed').value),
+      stream: document.getElementById('param-stream').checked,
+      voice: 'default',
+    };
+
+    if (refFileBase64) {
+      const refTranscript = document.getElementById('refTranscript').value.trim();
+      // sglang-omni accepts ref_audio as { data: base64, media_type: mime }
+      body.ref_audio = {
+        data: refFileBase64,
+        media_type: refFile ? (refFile.type || 'audio/wav') : 'audio/wav'
+      };
+      if (refTranscript) {
+        body.ref_text = refTranscript;
+      }
+    }
+
+    const res = await fetch(`${API_BASE}/v1/audio/speech`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    clearInterval(progressInterval);
+    progressFill.style.width = '100%';
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    audioBlob = await res.blob();
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    audioUrl = URL.createObjectURL(audioBlob);
+
+    const player = document.getElementById('audioPlayer');
+    player.src = audioUrl;
+    document.getElementById('audioOutput').classList.add('visible');
+    document.getElementById('downloadBtn').href = audioUrl;
+
+    player.onloadedmetadata = () => drawWaveform(player);
+    player.onended = () => { isPlaying = false; updatePlayIcon(); };
+
+    showToast(t('toast_success'), 'success');
+
+  } catch (err) {
+    clearInterval(progressInterval);
+    console.error(err);
+    showToast(t('toast_error_gen'), 'error');
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    setTimeout(() => { progressBar.classList.remove('visible'); progressFill.style.width = '0%'; }, 1000);
+  }
+}
+
+// ============ Audio ============
+function togglePlay() {
+  const player = document.getElementById('audioPlayer');
+  if (isPlaying) player.pause(); else player.play();
+  isPlaying = !isPlaying;
+  updatePlayIcon();
+}
+
+function updatePlayIcon() {
+  document.getElementById('playIcon').style.display = isPlaying ? 'none' : 'block';
+  document.getElementById('pauseIcon').style.display = isPlaying ? 'block' : 'none';
+}
+
+function drawWaveform(audio) {
+  const canvas = document.getElementById('waveformCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = canvas.offsetHeight * dpr;
+  ctx.scale(dpr, dpr);
+
+  const width = canvas.offsetWidth;
+  const height = canvas.offsetHeight;
+
+  const gradient = ctx.createLinearGradient(0, 0, width, 0);
+  gradient.addColorStop(0, '#8b5cf6');
+  gradient.addColorStop(0.5, '#ec4899');
+  gradient.addColorStop(1, '#3b82f6');
+
+  ctx.fillStyle = gradient;
+  const barCount = Math.floor(width / 3);
+  const barWidth = 2;
+  const gap = 1;
+
+  for (let i = 0; i < barCount; i++) {
+    const h = Math.random() * height * 0.6 + height * 0.1;
+    const y = (height - h) / 2;
+    ctx.fillRect(i * (barWidth + gap), y, barWidth, h);
+  }
+
+  const updateTime = () => {
+    if (!audio.paused) {
+      const min = Math.floor(audio.currentTime / 60);
+      const sec = Math.floor(audio.currentTime % 60).toString().padStart(2, '0');
+      document.getElementById('audioTime').textContent = `${min}:${sec}`;
+      requestAnimationFrame(updateTime);
+    }
+  };
+  audio.addEventListener('play', updateTime);
+}
+
+// ============ Toast ============
+function showToast(msg, type = 'info') {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = `toast ${type} visible`;
+  setTimeout(() => toast.classList.remove('visible'), 3000);
+}
+
+// ============ Boot ============
+init();
+applyI18n();
+</script>
+</body>
+</html>

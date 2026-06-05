@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# sglang-omni source (cloned repo, large)
+sglang-omni/
+
+# Models (large binary files)
+models/
+
+# Models (large binary files)
+models/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+CLAUDE.md
+.memory/
+
+# Local config
+secrets.env
+.env
+
+# Generated audio
+*.wav
+*.mp3
+*.flac
