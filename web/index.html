@@ -268,6 +268,37 @@ body::before {
 
 .chip:hover { border-color: var(--accent); color: var(--accent-light); background: var(--accent-glow); }
 
+/* ===== Token Tips ===== */
+.token-tips {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(139,92,246,0.06);
+  border: 1px solid rgba(139,92,246,0.15);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.token-tips .tip-title {
+  font-weight: 700;
+  color: var(--accent-light);
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+.token-tips .tip-rule {
+  display: block;
+  margin-bottom: 1px;
+}
+.token-tips code {
+  background: rgba(255,255,255,0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-secondary);
+  white-space: pre;
+}
+
 /* ===== Parameters ===== */
 .param-item { margin-bottom: 18px; }
 .param-item:last-child { margin-bottom: 0; }
@@ -894,6 +925,8 @@ input[type="range"]::-moz-range-thumb {
           <div class="token-tab-content" id="tab-prosody">
             <div class="token-chips" id="chips-prosody"></div>
           </div>
+
+          <div class="token-tips" id="tokenTips"></div>
         </div>
 
         <!-- Parameters -->
@@ -1244,10 +1277,65 @@ const i18n = {
 };
 
 const controlTokens = {
-  emotion: ['elation','amusement','enthusiasm','determination','pride','contentment','affection','relief','contemplation','confusion','surprise','awe','longing','arousal','anger','fear','disgust','bitterness','sadness','shame','helplessness'],
-  style: ['singing','shouting','whispering'],
-  sfx: ['cough','laughter','crying','screaming','burping','humming','sigh','sniff','sneeze'],
-  prosody: ['speed_very_slow','speed_slow','speed_fast','speed_very_fast','pitch_low','pitch_high','pause','long_pause','expressive_high','expressive_low']
+  emotion: [
+    {key:'elation', desc:{zh:'欣喜 / 喜悦', en:'Elation / joy'}},
+    {key:'amusement', desc:{zh:'愉悦 / 俏皮笑声', en:'Amusement / playful laughter'}},
+    {key:'enthusiasm', desc:{zh:'热情 / 兴奋', en:'Enthusiasm / excitement'}},
+    {key:'determination', desc:{zh:'坚定 / 果敢', en:'Determination / firmness'}},
+    {key:'pride', desc:{zh:'自豪 / 自信', en:'Pride / confidence'}},
+    {key:'contentment', desc:{zh:'平静满足', en:'Calm satisfaction'}},
+    {key:'affection', desc:{zh:'温暖 / 亲切', en:'Warmth / affection'}},
+    {key:'relief', desc:{zh:'释然', en:'Relief'}},
+    {key:'contemplation', desc:{zh:'沉思 / 内省', en:'Thoughtful / reflective'}},
+    {key:'confusion', desc:{zh:'困惑', en:'Confused'}},
+    {key:'surprise', desc:{zh:'惊讶', en:'Surprised'}},
+    {key:'awe', desc:{zh:'敬畏 / 惊叹', en:'Awe / wonder'}},
+    {key:'longing', desc:{zh:'渴望 / 思念', en:'Longing / yearning'}},
+    {key:'arousal', desc:{zh:'激动 / 亢奋', en:'Heightened desire'}},
+    {key:'anger', desc:{zh:'愤怒', en:'Anger'}},
+    {key:'fear', desc:{zh:'恐惧', en:'Fear'}},
+    {key:'disgust', desc:{zh:'厌恶', en:'Disgust'}},
+    {key:'bitterness', desc:{zh:'苦闷', en:'Bitterness'}},
+    {key:'sadness', desc:{zh:'悲伤', en:'Sadness'}},
+    {key:'shame', desc:{zh:'羞愧', en:'Shame'}},
+    {key:'helplessness', desc:{zh:'无助', en:'Helplessness'}}
+  ],
+  style: [
+    {key:'singing', desc:{zh:'唱歌', en:'Singing'}},
+    {key:'shouting', desc:{zh:'喊叫 / 投射嗓音', en:'Shouting / projected voice'}},
+    {key:'whispering', desc:{zh:'耳语', en:'Whisper'}}
+  ],
+  sfx: [
+    {key:'cough', desc:{zh:'咳嗽', en:'Cough'}, onomatopoeia:'Ahem'},
+    {key:'laughter', desc:{zh:'笑声', en:'Laughter'}, onomatopoeia:'Haha / Hehe'},
+    {key:'crying', desc:{zh:'哭声', en:'Crying'}, onomatopoeia:'Boohoo / Sob'},
+    {key:'screaming', desc:{zh:'尖叫', en:'Screaming'}, onomatopoeia:'Ahh / Aaah'},
+    {key:'burping', desc:{zh:'打嗝', en:'Burping'}, onomatopoeia:'Burp'},
+    {key:'humming', desc:{zh:'哼唱', en:'Humming'}, onomatopoeia:'Hmm / Mmm'},
+    {key:'sigh', desc:{zh:'叹息', en:'Sigh'}, onomatopoeia:'Uh / Ahh'},
+    {key:'sniff', desc:{zh:'抽鼻', en:'Sniff'}, onomatopoeia:'Sff'},
+    {key:'sneeze', desc:{zh:'打喷嚏', en:'Sneeze'}, onomatopoeia:'Achoo'}
+  ],
+  prosody: [
+    {key:'speed_very_slow', desc:{zh:'极慢 ≈0.65×', en:'≈0.65× speed'}},
+    {key:'speed_slow', desc:{zh:'慢速 ≈0.85×', en:'≈0.85× speed'}},
+    {key:'speed_fast', desc:{zh:'快速 ≈1.2×', en:'≈1.2× speed'}},
+    {key:'speed_very_fast', desc:{zh:'极快 ≈1.4×', en:'≈1.4× speed'}},
+    {key:'pitch_low', desc:{zh:'低音 ≈-3 半音', en:'≈−3 semitones'}},
+    {key:'pitch_high', desc:{zh:'高音 ≈+2.5 半音', en:'≈+2.5 semitones'}},
+    {key:'pause', desc:{zh:'停顿 ≈400–700ms', en:'≈400–700 ms pause'}},
+    {key:'long_pause', desc:{zh:'长停顿 ≈700–1500ms', en:'≈700–1500 ms pause'}},
+    {key:'expressive_high', desc:{zh:'更具表现力', en:'More expressive delivery'}},
+    {key:'expressive_low', desc:{zh:'平淡表达', en:'Flatter delivery'}}
+  ]
+};
+
+// Legacy simple dict for backward compatibility (emotion/style/sfx/prosody label lookup)
+const controlTokenKeys = {
+  emotion: controlTokens.emotion.map(t => t.key),
+  style: controlTokens.style.map(t => t.key),
+  sfx: controlTokens.sfx.map(t => t.key),
+  prosody: controlTokens.prosody.map(t => t.key)
 };
 
 const languages = [
@@ -1326,6 +1414,7 @@ function dbGetAll() {
 // ============ Init ============
 async function init() {
   buildControlChips();
+  buildTokenTips('emotion');
   buildLangsGrid();
   buildExamples();
   checkApiStatus();
@@ -1342,6 +1431,7 @@ function setLang(lang) {
   document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-lang') === lang));
   applyI18n();
   buildControlChips();
+  buildTokenTips(document.querySelector('.token-tab-btn.active')?.getAttribute('data-tab') || 'emotion');
   buildExamples();
 }
 
@@ -1369,25 +1459,43 @@ function rememberCursor() {
 // ============ Control Chips ============
 function buildControlChips() {
   const t = i18n[currentLang];
+  const lang = currentLang;
   ['emotion','style','sfx','prosody'].forEach(cat => {
     const container = document.getElementById(`chips-${cat}`);
     container.innerHTML = '';
-    controlTokens[cat].forEach(token => {
+    controlTokens[cat].forEach(item => {
+      const token = item.key;
       const labelKey = cat === 'sfx' ? 'sfx' : cat + 's';
       const label = t[labelKey]?.[token] || token;
       const chip = document.createElement('button');
       chip.className = 'chip';
       chip.textContent = label;
-      chip.title = `<|${cat}:${token}|>`;
-      chip.onclick = () => insertTokenAtCursor(cat, token);
+
+      // Build rich tooltip
+      let tooltip = `<|${cat}:${token}|>\n`;
+      const desc = item.desc?.[lang] || item.desc?.en || '';
+      if (desc) tooltip += `${lang === 'zh' ? '说明：' : 'Desc: '}${desc}`;
+      if (item.onomatopoeia) {
+        tooltip += `\n${lang === 'zh' ? '拟声词：' : 'Onomatopoeia: '}${item.onomatopoeia}`;
+      }
+      chip.title = tooltip;
+
+      chip.onclick = () => insertTokenAtCursor(cat, token, item);
       container.appendChild(chip);
     });
   });
 }
 
-function insertTokenAtCursor(category, token) {
+function insertTokenAtCursor(category, token, item) {
   const ta = document.getElementById('textInput');
-  const tokenStr = `<|${category}:${token}|>`;
+  const lang = currentLang;
+  let tokenStr = `<|${category}:${token}|>`;
+
+  // For SFX tokens, auto-append onomatopoeia as the model card requires
+  if (item?.onomatopoeia) {
+    tokenStr += item.onomatopoeia.split('/')[0].trim();
+  }
+
   const pos = cursorPos.start;
 
   const before = ta.value.substring(0, pos);
@@ -1413,6 +1521,55 @@ function showInsertHint() {
 function switchTab(tabName) {
   document.querySelectorAll('.token-tab-btn').forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tabName));
   document.querySelectorAll('.token-tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${tabName}`));
+  buildTokenTips(tabName);
+}
+
+// ============ Token Tips ============
+function buildTokenTips(tabName) {
+  const container = document.getElementById('tokenTips');
+  const lang = currentLang;
+
+  const tips = {
+    emotion: {
+      zh: `<div class="tip-title">💡 使用规则</div>
+        <span class="tip-rule">情感标记影响整个回合的语音，建议放在文本开头。</span>
+        <span class="tip-rule">例如：<code>&lt;|emotion:amusement|&gt;你的文本内容...</code></span>`,
+      en: `<div class="tip-title">💡 Usage</div>
+        <span class="tip-rule">Emotion tokens shape the entire turn — place them at the start of your text.</span>
+        <span class="tip-rule">Example: <code>&lt;|emotion:amusement|&gt;Your text here...</code></span>`
+    },
+    style: {
+      zh: `<div class="tip-title">💡 使用规则</div>
+        <span class="tip-rule">风格标记影响整个回合的语音，建议放在文本开头。</span>
+        <span class="tip-rule">可与情感标记叠加使用，例如：<code>&lt;|emotion:determination|&gt;&lt;|style:shouting|&gt;...</code></span>`,
+      en: `<div class="tip-title">💡 Usage</div>
+        <span class="tip-rule">Style tokens shape the entire turn — place them at the start of your text.</span>
+        <span class="tip-rule">Can be combined with emotion tokens, e.g. <code>&lt;|emotion:determination|&gt;&lt;|style:shouting|&gt;...</code></span>`
+    },
+    sfx: {
+      zh: `<div class="tip-title">💡 重要：音效标记需搭配拟声词</div>
+        <span class="tip-rule">每个音效标记后面必须跟上对应的拟声词，模型才能正确生成音效。</span>
+        <span class="tip-rule">点击插入时已自动追加拟声词。</span>
+        <span class="tip-rule">例如：<code>&lt;|sfx:laughter|&gt;Haha</code> <code>&lt;|sfx:sigh|&gt;Uh</code> <code>&lt;|sfx:sneeze|&gt;Achoo</code></span>`,
+      en: `<div class="tip-title">💡 Important: SFX tokens require onomatopoeia</div>
+        <span class="tip-rule">Each SFX token must be paired with its onomatopoeia for the model to generate the sound effect.</span>
+        <span class="tip-rule">Onomatopoeia is auto-appended when you click to insert.</span>
+        <span class="tip-rule">Example: <code>&lt;|sfx:laughter|&gt;Haha</code> <code>&lt;|sfx:sigh|&gt;Uh</code> <code>&lt;|sfx:sneeze|&gt;Achoo</code></span>`
+    },
+    prosody: {
+      zh: `<div class="tip-title">💡 使用规则</div>
+        <span class="tip-rule">速度/音高/表现力标记放句首，影响整个回合。</span>
+        <span class="tip-rule">停顿标记放在句中需要停顿的位置。</span>
+        <span class="tip-rule">例如：<code>&lt;|prosody:speed_slow|&gt;慢速文本...&lt;|prosody:pause|&gt;停顿后的内容</code></span>`,
+      en: `<div class="tip-title">💡 Usage</div>
+        <span class="tip-rule">Speed/pitch/expressive tokens at the start — affect the entire turn.</span>
+        <span class="tip-rule">Pause tokens go inline where you want a break.</span>
+        <span class="tip-rule">Example: <code>&lt;|prosody:speed_slow|&gt;Slow text...&lt;|prosody:pause|&gt;after pause</code></span>`
+    }
+  };
+
+  const tip = tips[tabName]?.[lang];
+  container.innerHTML = tip || '';
 }
 
 // ============ Sliders ============
